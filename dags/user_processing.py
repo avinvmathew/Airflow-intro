@@ -84,13 +84,13 @@ def user_processing():
     fake_user = is_api_available()
     user_info = extract_user(fake_user)
     processed = process_user(user_info)
-    
+
     create_table >> fake_user
     processed >> store_user()
 
 user_processing()
 
-
+#test up git
 
 
 
