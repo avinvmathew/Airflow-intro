@@ -1,6 +1,7 @@
 from airflow.sdk import dag, task
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.sdk.bases.sensor import PokeReturnValue
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 @dag
 def user_processing():
@@ -42,8 +43,50 @@ def user_processing():
             "email" : fake_user["personalInfo"]["email"]
         }
     
+    @task
+    def process_user(user_info):
+
+        # # can use csv module too
+        # with open("user_info.csv", "a", newline = "", encoding = "utf-8") as ui:
+            
+        #     ui.write()
+
+        # using pandas
+        import pandas as pd
+        from pathlib import Path
+
+        # # test data
+        # user_info = {
+        #     "id" : "123",
+        #     "firstname" : "John",
+        #     "lastname" :"Doe",
+        #     "email" : "johndoe@gmail.com"
+        # }
+
+        # test store_user()
+        from datetime import datetime
+        user_info["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        file_path = Path("/tmp/user_info.csv")
+        df = pd.DataFrame([user_info])
+        exists = file_path.exists()
+        df.to_csv("/tmp/user_info.csv", mode = "a", index = False, header = not exists)
+
+    @task
+    def store_user():
+        hook = PostgresHook(postgres_conn_id = "postgres")
+        hook.copy_expert(
+            sql="COPY users FROM STDIN WITH CSV HEADER",
+            filename="/tmp/user_info.csv"
+        )
+
+    # process_user(extract_user(create_table >> is_api_available())) >> store_user()
     fake_user = is_api_available()
     user_info = extract_user(fake_user)
+    processed = process_user(user_info)
+    
+    create_table >> fake_user
+    processed >> store_user()
 
 user_processing()
 
