@@ -3,3 +3,7 @@
 
 !.gitignore
 !dags/
+
+dags/*
+
+!dags/*.py
